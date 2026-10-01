@@ -27,13 +27,13 @@ jobs:
         run: |
           pip install gdown
           
-          # 1. Descarga el archivo ZIP desde Google Drive
-          gdown --id "https://drive.google.com/uc?id=1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1/view?usp=drivesdk" -O juego.zip
+          # 1. Descarga el archivo ZIP desde Google Drive usando tu ID
+          gdown --id "1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1" -O juego.zip
           
           # 2. Descomprime todo el contenido en la carpeta principal
           unzip -o juego.zip -d .
           
-          # 3. Borra el archivo zip pesado para que no ocupe espacio innecesario
+          # 3. Borra el archivo zip cargado
           rm juego.zip
 
       - name: Configurar GitHub Pages
