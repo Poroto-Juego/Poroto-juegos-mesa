@@ -2,7 +2,7 @@ name: Deploy a GitHub Pages desde ZIP en Drive
 
 on:
   push:
-    branches: ["main"] # Si tu rama principal se llama master, cambia "main" por "master"
+    branches: ["main"] # Cambia a "master" si tu rama principal se llama master
 
 permissions:
   contents: read
@@ -27,8 +27,8 @@ jobs:
         run: |
           pip install gdown
           
-          # 1. Descarga el archivo ZIP desde Google Drive usando tu ID
-          gdown --id "1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1" -O juego.zip
+          # 1. Descarga el archivo ZIP usando el formato directo
+          gdown "https://drive.google.com/uc?id=1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1" -O juego.zip
           
           # 2. Descomprime todo el contenido en la carpeta principal
           unzip -o juego.zip -d .
