@@ -23,7 +23,7 @@ jobs:
       - name: Descargar codigo del repositorio
         uses: actions/checkout@v4
 
-      - name: Descargar, descomprimir y crear contenedor Iframe escalado (Estilo itch.io)
+      - name: Descargar, descomprimir y crear contenedor Iframe (Estilo itch.io)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -42,7 +42,7 @@ jobs:
             mv index.html game.html
           fi
 
-          # 5. Crear contenedor con resolucion interna fija de 720x1280 y escalado CSS
+          # 5. Crear contenedor con proporcion estricta 720:1280 (Identico a itch.io)
           cat << 'EOF' > index.html
           <!DOCTYPE html>
           <html lang="es">
@@ -65,35 +65,16 @@ jobs:
                 justify-content: center;
                 align-items: center;
               }
-              #container {
-                width: 720px;
-                height: 1280px;
-                transform-origin: center center;
-              }
               iframe {
-                width: 720px;
-                height: 1280px;
                 border: none;
-                display: block;
+                width: min(100vw, calc(100vh * (720 / 1280)));
+                height: min(100vh, calc(100vw * (1280 / 720)));
+                aspect-ratio: 720 / 1280;
               }
             </style>
           </head>
           <body>
-            <div id="container">
-              <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
-            </div>
-            <script>
-              function scaleGame() {
-                const container = document.getElementById('container');
-                const scaleX = window.innerWidth / 720;
-                const scaleY = window.innerHeight / 1280;
-                const scale = Math.min(scaleX, scaleY);
-                container.style.transform = `scale(${scale})`;
-              }
-              window.addEventListener('resize', scaleGame);
-              window.addEventListener('load', scaleGame);
-              scaleGame();
-            </script>
+            <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
           </body>
           </html>
           EOF
