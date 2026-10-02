@@ -27,9 +27,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # 1. Descargar el archivo ZIP de la Release
           gh release download v1.0 -p "Poroto.Web.zip" -O juego.zip
-          unzip -o juego.zip -d .
-          rm juego.zip
+          
+          # 2. Descomprimir en carpeta temporal
+          mkdir temp_unzip
+          unzip -o juego.zip -d temp_unzip
+          
+          # 3. Mover archivos a la raiz sin importar la estructura interna del ZIP
+          find temp_unzip -mindepth 1 -maxdepth 2 -type f -exec mv {} . \;
+          
+          # 4. Asegurar que exista index.html (si Godot le puso otro nombre como Poroto.html)
+          if [ ! -f "index.html" ]; then
+            html_file=$(ls *.html 2>/dev/null | head -n 1)
+            if [ -n "$html_file" ]; then
+              cp "$html_file" index.html
+            fi
+          fi
+          
+          # 5. Limpieza
+          rm -rf temp_unzip juego.zip
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
@@ -44,4 +61,3 @@ jobs:
       - name: Desplegar a GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
