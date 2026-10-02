@@ -2,7 +2,7 @@ name: Deploy a GitHub Pages desde ZIP en Drive
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main"] # Cambia a "master" si tu rama principal en GitHub se llama master
 
 permissions:
   contents: read
@@ -24,50 +24,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Descargar y descomprimir juego desde Google Drive
-        shell: bash
         run: |
-          set -e
-
-          echo "Instalando herramientas necesarias..."
-          python -m pip install --upgrade gdown
-
-          FILE_ID="1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1"
-          ZIP_FILE="juego.zip"
-
-          echo "Descargando archivo desde Google Drive (intento 1 con --fuzzy)..."
-          if ! gdown --fuzzy "https://drive.google.com/file/d/${FILE_ID}/view?usp=sharing" -O "$ZIP_FILE" 2>/dev/null; then
-            echo "Intento 2: usando ID directo..."
-            gdown "${FILE_ID}" -O "$ZIP_FILE"
-          fi
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "❌ Error: no se descargó el archivo"
-            exit 1
-          fi
-
-          FILE_SIZE=$(stat -c%s "$ZIP_FILE")
-          echo "✓ Archivo descargado: $FILE_SIZE bytes"
-
-          if [ "$FILE_SIZE" -lt 100 ]; then
-            echo "❌ Error: archivo demasiado pequeño"
-            head -c 500 "$ZIP_FILE"
-            exit 1
-          fi
-
-          echo "Validando ZIP..."
-          if ! unzip -t "$ZIP_FILE" > /dev/null 2>&1; then
-            echo "❌ Error: archivo no es un ZIP válido"
-            file "$ZIP_FILE"
-            exit 1
-          fi
-
-          echo "Extrayendo archivo..."
-          unzip -o "$ZIP_FILE" -d .
-          
-          echo "Eliminando ZIP temporal..."
-          rm -f "$ZIP_FILE"
-          
-          echo "✓ Deploy preparado exitosamente"
+          pip install gdown
+          python3 -c "import gdown; gdown.download('https://drive.google.com/uc?id=1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1', 'juego.zip', quiet=False)"
+          unzip -o juego.zip -d .
+          rm juego.zip
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
