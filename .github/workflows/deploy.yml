@@ -2,7 +2,7 @@ name: Deploy a GitHub Pages desde Release
 
 on:
   push:
-    branches: ["main"] # Cambia a "master" si tu rama se llama master
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -18,28 +18,47 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Descargar codigo del repositorio
         uses: actions/checkout@v4
 
-      - name: Descargar y desplegar Release directamente
+      - name: Descargar y preparar Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Descargar el .zip de la release v1.0
+          rm -rf sitio juego.zip
+          mkdir sitio
+
           gh release download v1.0 -p "*.zip" -O juego.zip
-          
-          # 2. Descomprimir archivos tal como los genera Godot
-          unzip -o juego.zip -d .
-          
-          # 3. Mover archivos a la raíz si cayeron en una carpeta interna
-          if [ ! -f "index.html" ]; then
-            find . -mindepth 2 -type f -exec mv {} . \;
+
+          unzip -o juego.zip -d sitio
+
+          if [ -f "sitio/index.html" ]; then
+            echo "Exportación encontrada directamente en la raíz del ZIP."
+          else
+            INDEX_PATH=$(find sitio -type f -name "index.html" -print -quit)
+
+            if [ -z "$INDEX_PATH" ]; then
+              echo "ERROR: No se encontró index.html dentro del ZIP."
+              exit 1
+            fi
+
+            INDEX_DIR=$(dirname "$INDEX_PATH")
+
+            echo "index.html encontrado en: $INDEX_DIR"
+
+            if [ "$INDEX_DIR" != "sitio" ]; then
+              cp -R "$INDEX_DIR"/. sitio/
+            fi
           fi
-          
-          # 4. Limpieza del zip
+
           rm -f juego.zip
+
+          echo "Contenido final de Pages:"
+          find sitio -maxdepth 2 -type f | sort
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
@@ -49,7 +68,7 @@ jobs:
       - name: Empaquetar sitio
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: "sitio"
 
       - name: Desplegar a GitHub Pages
         id: deployment
