@@ -23,7 +23,7 @@ jobs:
       - name: Descargar codigo del repositorio
         uses: actions/checkout@v4
 
-      - name: Descargar, descomprimir y crear contenedor Iframe (Estilo itch.io)
+      - name: Descargar, descomprimir y crear contenedor Iframe escalado (Estilo itch.io)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -42,7 +42,7 @@ jobs:
             mv index.html game.html
           fi
 
-          # 5. Crear el index.html contenedor con marco fijo 720x1280
+          # 5. Crear contenedor con resolucion interna fija de 720x1280 y escalado CSS
           cat << 'EOF' > index.html
           <!DOCTYPE html>
           <html lang="es">
@@ -52,9 +52,9 @@ jobs:
             <title>Poroto</title>
             <style>
               * {
-                box-sizing: border-box;
                 margin: 0;
                 padding: 0;
+                box-sizing: border-box;
               }
               html, body {
                 width: 100vw;
@@ -65,15 +65,35 @@ jobs:
                 justify-content: center;
                 align-items: center;
               }
+              #container {
+                width: 720px;
+                height: 1280px;
+                transform-origin: center center;
+              }
               iframe {
+                width: 720px;
+                height: 1280px;
                 border: none;
-                width: min(100vw, calc(100vh * (720 / 1280)));
-                height: min(100vh, calc(100vw * (1280 / 720)));
+                display: block;
               }
             </style>
           </head>
           <body>
-            <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
+            <div id="container">
+              <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
+            </div>
+            <script>
+              function scaleGame() {
+                const container = document.getElementById('container');
+                const scaleX = window.innerWidth / 720;
+                const scaleY = window.innerHeight / 1280;
+                const scale = Math.min(scaleX, scaleY);
+                container.style.transform = `scale(${scale})`;
+              }
+              window.addEventListener('resize', scaleGame);
+              window.addEventListener('load', scaleGame);
+              scaleGame();
+            </script>
           </body>
           </html>
           EOF
