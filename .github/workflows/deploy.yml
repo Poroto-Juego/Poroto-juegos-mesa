@@ -23,86 +23,62 @@ jobs:
       - name: Descargar codigo del repositorio
         uses: actions/checkout@v4
 
-      - name: Descargar, descomprimir y crear contenedor Iframe (Estilo itch.io)
+      - name: Descargar, descomprimir y forzar Pantalla Completa Total
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Descargar archivo ZIP de la Release
+          # 1. Descargar archivo ZIP de la Release v1.0
           gh release download v1.0 -p "*.zip"
           mv *.zip juego.zip
           
           # 2. Descomprimir
           unzip -o juego.zip -d .
           
-          # 3. Mover archivos a la raiz si estaban dentro de subcarpetas
+          # 3. Mover archivos a la raiz si quedaron dentro de subcarpetas
           find . -mindepth 2 -type f -exec mv {} . \;
           
-          # 4. Renombrar el HTML original de Godot a game.html
-          if [ -f "index.html" ]; then
-            mv index.html game.html
-          fi
-
-          # 5. Generar index.html contenedor con viewport fijo 720x1280 y anti-cache
-          cat << 'EOF' > index.html
-          <!DOCTYPE html>
-          <html lang="es">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-            <meta http-equiv="Pragma" content="no-cache">
-            <meta http-equiv="Expires" content="0">
-            <title>Poroto</title>
-            <style>
-              * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-              }
-              html, body {
-                width: 100vw;
-                height: 100vh;
-                background-color: #000000;
-                overflow: hidden;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-              }
-              #canvas-wrapper {
-                width: 720px;
-                height: 1280px;
-                position: absolute;
-                transform-origin: center center;
-              }
-              iframe {
-                width: 720px;
-                height: 1280px;
-                border: none;
-                display: block;
-              }
-            </style>
-          </head>
-          <body>
-            <div id="canvas-wrapper">
-              <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
-            </div>
-            <script>
-              function resizeGame() {
-                const wrapper = document.getElementById('canvas-wrapper');
-                const scaleX = window.innerWidth / 720;
-                const scaleY = window.innerHeight / 1280;
-                const scale = Math.min(scaleX, scaleY);
-                wrapper.style.transform = 'scale(' + scale + ')';
-              }
-              window.addEventListener('resize', resizeGame);
-              window.addEventListener('load', resizeGame);
-              resizeGame();
-            </script>
-          </body>
-          </html>
-          EOF
+          # 4. Inyectar CSS que fuerza al juego a ocupar el 100% de la pantalla sin franjas negras
+          python3 -c '
+          import os
+          if os.path.exists("index.html"):
+              with open("index.html", "r", encoding="utf-8") as f:
+                  content = f.read()
+              
+              full_screen_css = """
+              <style>
+                html, body {
+                  width: 100% !important;
+                  height: 100% !important;
+                  height: 100dvh !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  overflow: hidden !important;
+                  background-color: #000000 !important;
+                  position: fixed !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                }
+                #canvas, canvas {
+                  width: 100vw !important;
+                  height: 100dvh !important;
+                  position: fixed !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  object-fit: fill !important;
+                  display: block !important;
+                }
+              </style>
+              """
+              if "</head>" in content:
+                  new_content = content.replace("</head>", full_screen_css + "\n</head>")
+              else:
+                  new_content = full_screen_css + content
+                  
+              with open("index.html", "w", encoding="utf-8") as f:
+                  f.write(new_content)
+          '
           
-          # 6. Limpieza
+          # 5. Limpieza
           rm -f juego.zip
 
       - name: Configurar GitHub Pages
