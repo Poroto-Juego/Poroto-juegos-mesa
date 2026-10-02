@@ -27,28 +27,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Descargar el archivo .zip de la Release v1.0
+          # 1. Descargar archivo ZIP de la Release
           gh release download v1.0 -p "*.zip"
           mv *.zip juego.zip
           
           # 2. Descomprimir
           unzip -o juego.zip -d .
           
-          # 3. Mover archivos a la raiz si quedaron dentro de alguna subcarpeta
+          # 3. Mover archivos a la raiz si estaban dentro de subcarpetas
           find . -mindepth 2 -type f -exec mv {} . \;
           
-          # 4. Renombrar el index.html original de Godot a game.html
+          # 4. Renombrar el HTML original de Godot a game.html
           if [ -f "index.html" ]; then
             mv index.html game.html
           fi
 
-          # 5. Crear contenedor con proporcion estricta 720:1280 (Identico a itch.io)
+          # 5. Generar index.html contenedor con viewport fijo 720x1280 y anti-cache
           cat << 'EOF' > index.html
           <!DOCTYPE html>
           <html lang="es">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+            <meta http-equiv="Pragma" content="no-cache">
+            <meta http-equiv="Expires" content="0">
             <title>Poroto</title>
             <style>
               * {
@@ -65,16 +68,36 @@ jobs:
                 justify-content: center;
                 align-items: center;
               }
+              #canvas-wrapper {
+                width: 720px;
+                height: 1280px;
+                position: absolute;
+                transform-origin: center center;
+              }
               iframe {
+                width: 720px;
+                height: 1280px;
                 border: none;
-                width: min(100vw, calc(100vh * (720 / 1280)));
-                height: min(100vh, calc(100vw * (1280 / 720)));
-                aspect-ratio: 720 / 1280;
+                display: block;
               }
             </style>
           </head>
           <body>
-            <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
+            <div id="canvas-wrapper">
+              <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
+            </div>
+            <script>
+              function resizeGame() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                const scaleX = window.innerWidth / 720;
+                const scaleY = window.innerHeight / 1280;
+                const scale = Math.min(scaleX, scaleY);
+                wrapper.style.transform = 'scale(' + scale + ')';
+              }
+              window.addEventListener('resize', resizeGame);
+              window.addEventListener('load', resizeGame);
+              resizeGame();
+            </script>
           </body>
           </html>
           EOF
