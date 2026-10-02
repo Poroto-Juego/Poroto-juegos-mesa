@@ -2,7 +2,7 @@ name: Deploy a GitHub Pages desde Release
 
 on:
   push:
-    branches: ["main"] # Cambia a "master" si tu rama principal se llama master
+    branches: ["main"] # Cambia a "master" si tu rama se llama master
 
 permissions:
   contents: read
@@ -23,103 +23,23 @@ jobs:
       - name: Descargar codigo del repositorio
         uses: actions/checkout@v4
 
-      - name: Procesar juego y crear contenedor estilo itch.io
+      - name: Descargar y desplegar Release directamente
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
+          # 1. Descargar el .zip de la release v1.0
+          gh release download v1.0 -p "*.zip" -O juego.zip
           
-          # 1. Crear carpeta temporal para no mezclar archivos
-          mkdir -p build_dir
+          # 2. Descomprimir archivos tal como los genera Godot
+          unzip -o juego.zip -d .
           
-          # 2. Descargar archivo ZIP de la Release
-          gh release download v1.0 -p "*.zip" -D build_dir
-          
-          # 3. Descomprimir en build_dir
-          cd build_dir
-          ZIP_FILE=$(ls *.zip | head -n 1)
-          unzip -o "$ZIP_FILE"
-          rm -f "$ZIP_FILE"
-          
-          # Mover archivos si quedaron dentro de alguna subcarpeta
+          # 3. Mover archivos a la raíz si cayeron en una carpeta interna
           if [ ! -f "index.html" ]; then
-            SUBDIR=$(find . -mindepth 1 -maxdepth 1 -type d | head -n 1)
-            if [ -n "$SUBDIR" ]; then
-              mv "$SUBDIR"/* . 2>/dev/null || true
-            fi
+            find . -mindepth 2 -type f -exec mv {} . \;
           fi
-
-          # 4. Renombrar el HTML de Godot a game.html
-          if [ -f "index.html" ]; then
-            mv index.html game.html
-          else
-            HTML_FILE=$(ls *.html | grep -v "index.html" | head -n 1)
-            if [ -n "$HTML_FILE" ]; then
-              mv "$HTML_FILE" game.html
-            fi
-          fi
-
-          # 5. Generar index.html contenedor (Igual a itch.io)
-          cat << 'EOF' > index.html
-          <!DOCTYPE html>
-          <html lang="es">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <title>Poroto</title>
-            <style>
-              * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-              }
-              html, body {
-                width: 100vw;
-                height: 100vh;
-                background-color: #000000;
-                overflow: hidden;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-              }
-              #game-wrapper {
-                position: relative;
-                width: 720px;
-                height: 1280px;
-                transform-origin: center center;
-              }
-              iframe {
-                width: 720px;
-                height: 1280px;
-                border: 0;
-                display: block;
-              }
-            </style>
-          </head>
-          <body>
-            <div id="game-wrapper">
-              <iframe src="game.html" allow="autoplay; fullscreen"></iframe>
-            </div>
-            <script>
-              function resizeGame() {
-                const wrapper = document.getElementById('game-wrapper');
-                const scaleX = window.innerWidth / 720;
-                const scaleY = window.innerHeight / 1280;
-                const scale = Math.min(scaleX, scaleY);
-                wrapper.style.transform = 'scale(' + scale + ')';
-              }
-              window.addEventListener('resize', resizeGame);
-              window.addEventListener('load', resizeGame);
-              resizeGame();
-            </script>
-          </body>
-          </html>
-          EOF
-
-          # 6. Mover todo a la raíz
-          cd ..
-          cp -r build_dir/* .
-          rm -rf build_dir
+          
+          # 4. Limpieza del zip
+          rm -f juego.zip
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
