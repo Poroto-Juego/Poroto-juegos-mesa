@@ -23,7 +23,7 @@ jobs:
       - name: Descargar codigo del repositorio
         uses: actions/checkout@v4
 
-      - name: Descargar y descomprimir juego desde Release
+      - name: Descargar, descomprimir y parchear juego
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -35,18 +35,59 @@ jobs:
           mkdir temp_unzip
           unzip -o juego.zip -d temp_unzip
           
-          # 3. Mover archivos a la raiz sin importar la estructura interna del ZIP
+          # 3. Mover archivos a la raiz
           find temp_unzip -mindepth 1 -maxdepth 2 -type f -exec mv {} . \;
           
           # 4. Asegurar que exista index.html
           if [ ! -f "index.html" ]; then
-            html_file=$(ls *.html 2>/dev/null | head -n 1)
+            html_file=$(ls *.html 2>/devnull | head -n 1)
             if [ -n "$html_file" ]; then
               cp "$html_file" index.html
             fi
           fi
+
+          # 5. Inyectar contenedor estilo itch.io (720x1280 estricto centrado)
+          python3 -c '
+          import os
+          if os.path.exists("index.html"):
+              with open("index.html", "r", encoding="utf-8") as f:
+                  content = f.read()
+              
+              css_patch = """
+              <style>
+                html, body {
+                  background-color: #0b0b0e !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  overflow: hidden !important;
+                  display: flex !important;
+                  justify-content: center !important;
+                  align-items: center !important;
+                }
+                #canvas, canvas {
+                  max-width: 100vw !important;
+                  max-height: 100vh !important;
+                  width: min(100vw, calc(100vh * (720 / 1280))) !important;
+                  height: min(100vh, calc(100vw * (1280 / 720))) !important;
+                  aspect-ratio: 720 / 1280 !important;
+                  object-fit: contain !important;
+                  display: block !important;
+                  margin: auto !important;
+                }
+              </style>
+              """
+              if "</head>" in content:
+                  new_content = content.replace("</head>", css_patch + "\n</head>")
+              else:
+                  new_content = content + css_patch
+                  
+              with open("index.html", "w", encoding="utf-8") as f:
+                  f.write(new_content)
+          '
           
-          # 5. Limpieza
+          # 6. Limpieza
           rm -rf temp_unzip juego.zip
 
       - name: Configurar GitHub Pages
