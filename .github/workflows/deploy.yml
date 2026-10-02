@@ -1,8 +1,8 @@
-name: Deploy a GitHub Pages desde ZIP en Drive
+name: Deploy a GitHub Pages desde Release
 
 on:
   push:
-    branches: ["main"] # Cambia a "master" si tu rama principal en GitHub se llama master
+    branches: ["main"] # Cambia a "master" si tu rama principal se llama master
 
 permissions:
   contents: read
@@ -23,10 +23,9 @@ jobs:
       - name: Descargar codigo del repositorio
         uses: actions/checkout@v4
 
-      - name: Descargar y descomprimir juego desde Google Drive
+      - name: Descargar y descomprimir juego desde Release
         run: |
-          pip install gdown
-          python3 -c "import gdown; gdown.download('https://drive.google.com/uc?id=1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1', 'juego.zip', quiet=False)"
+          curl -L "https://github.com/Poroto-Juego/Poroto-Juego/releases/download/v1.0/Poroto.Web.zip" -o juego.zip
           unzip -o juego.zip -d .
           rm juego.zip
 
@@ -41,3 +40,4 @@ jobs:
       - name: Desplegar a GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
