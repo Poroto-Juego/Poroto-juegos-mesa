@@ -25,16 +25,56 @@ jobs:
 
       - name: Descargar y descomprimir juego desde Google Drive
         run: |
-          pip install gdown
+          set -e  # Detener si hay error
           
-          # 1. Descarga el archivo ZIP usando el formato directo
-          gdown "https://drive.google.com/uc?id=1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1" -O juego.zip
+          # Variables
+          FILE_ID="1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1"
+          OUTPUT_FILE="juego.zip"
           
-          # 2. Descomprime todo el contenido en la carpeta principal
-          unzip -o juego.zip -d .
+          # 1. Descargar usando curl (más confiable que gdown)
+          echo "Descargando archivo desde Google Drive..."
+          curl -L -o "$OUTPUT_FILE" "https://drive.google.com/uc?id=$FILE_ID&export=download" \
+            --progress-bar \
+            --retry 3 \
+            --retry-delay 2 || {
+            echo "Error al descargar el archivo"
+            exit 1
+          }
           
-          # 3. Borra el archivo zip cargado
-          rm juego.zip
+          # 2. Verificar que el archivo se descargó correctamente
+          if [ ! -f "$OUTPUT_FILE" ]; then
+            echo "Error: El archivo no se descargó"
+            exit 1
+          fi
+          
+          file_size=$(stat -f%z "$OUTPUT_FILE" 2>/dev/null || stat -c%s "$OUTPUT_FILE" 2>/dev/null)
+          echo "Archivo descargado: $file_size bytes"
+          
+          if [ "$file_size" -lt 1000 ]; then
+            echo "Error: El archivo es demasiado pequeño, es posible que no se haya descargado correctamente"
+            cat "$OUTPUT_FILE" | head -20
+            exit 1
+          fi
+          
+          # 3. Descomprimir
+          echo "Extrayendo archivo ZIP..."
+          unzip -q -o "$OUTPUT_FILE" -d . || {
+            echo "Error al extraer el ZIP"
+            exit 1
+          }
+          
+          # 4. Verificar extracción
+          if [ $? -eq 0 ]; then
+            echo "Extracción completada exitosamente"
+            ls -la
+          else
+            echo "Error en la extracción"
+            exit 1
+          fi
+          
+          # 5. Limpiar el ZIP
+          rm -f "$OUTPUT_FILE"
+          echo "Archivo temporal eliminado"
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
