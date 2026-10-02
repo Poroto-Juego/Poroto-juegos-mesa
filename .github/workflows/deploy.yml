@@ -2,7 +2,7 @@ name: Deploy a GitHub Pages desde ZIP en Drive
 
 on:
   push:
-    branches: ["main"] # Cambia a "master" si tu rama principal se llama master
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -24,57 +24,50 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Descargar y descomprimir juego desde Google Drive
+        shell: bash
         run: |
-          set -e  # Detener si hay error
-          
-          # Variables
+          set -e
+
+          echo "Instalando herramientas necesarias..."
+          python -m pip install --upgrade gdown
+
           FILE_ID="1mpQeRhsXgtDzg-evC7cwjutf3sFUbkm1"
-          OUTPUT_FILE="juego.zip"
-          
-          # 1. Descargar usando curl (más confiable que gdown)
-          echo "Descargando archivo desde Google Drive..."
-          curl -L -o "$OUTPUT_FILE" "https://drive.google.com/uc?id=$FILE_ID&export=download" \
-            --progress-bar \
-            --retry 3 \
-            --retry-delay 2 || {
-            echo "Error al descargar el archivo"
-            exit 1
-          }
-          
-          # 2. Verificar que el archivo se descargó correctamente
-          if [ ! -f "$OUTPUT_FILE" ]; then
-            echo "Error: El archivo no se descargó"
+          ZIP_FILE="juego.zip"
+
+          echo "Descargando archivo desde Google Drive (intento 1 con --fuzzy)..."
+          if ! gdown --fuzzy "https://drive.google.com/file/d/${FILE_ID}/view?usp=sharing" -O "$ZIP_FILE" 2>/dev/null; then
+            echo "Intento 2: usando ID directo..."
+            gdown "${FILE_ID}" -O "$ZIP_FILE"
+          fi
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "❌ Error: no se descargó el archivo"
             exit 1
           fi
-          
-          file_size=$(stat -f%z "$OUTPUT_FILE" 2>/dev/null || stat -c%s "$OUTPUT_FILE" 2>/dev/null)
-          echo "Archivo descargado: $file_size bytes"
-          
-          if [ "$file_size" -lt 1000 ]; then
-            echo "Error: El archivo es demasiado pequeño, es posible que no se haya descargado correctamente"
-            cat "$OUTPUT_FILE" | head -20
+
+          FILE_SIZE=$(stat -c%s "$ZIP_FILE")
+          echo "✓ Archivo descargado: $FILE_SIZE bytes"
+
+          if [ "$FILE_SIZE" -lt 100 ]; then
+            echo "❌ Error: archivo demasiado pequeño"
+            head -c 500 "$ZIP_FILE"
             exit 1
           fi
-          
-          # 3. Descomprimir
-          echo "Extrayendo archivo ZIP..."
-          unzip -q -o "$OUTPUT_FILE" -d . || {
-            echo "Error al extraer el ZIP"
-            exit 1
-          }
-          
-          # 4. Verificar extracción
-          if [ $? -eq 0 ]; then
-            echo "Extracción completada exitosamente"
-            ls -la
-          else
-            echo "Error en la extracción"
+
+          echo "Validando ZIP..."
+          if ! unzip -t "$ZIP_FILE" > /dev/null 2>&1; then
+            echo "❌ Error: archivo no es un ZIP válido"
+            file "$ZIP_FILE"
             exit 1
           fi
+
+          echo "Extrayendo archivo..."
+          unzip -o "$ZIP_FILE" -d .
           
-          # 5. Limpiar el ZIP
-          rm -f "$OUTPUT_FILE"
-          echo "Archivo temporal eliminado"
+          echo "Eliminando ZIP temporal..."
+          rm -f "$ZIP_FILE"
+          
+          echo "✓ Deploy preparado exitosamente"
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
